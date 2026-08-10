@@ -122,7 +122,13 @@ def main():
         future = model.make_future_dataframe(periods=FORECAST_MONTHS, freq="MS")
         forecast = model.predict(future)
 
-        forecast_out = forecast[["ds", "yhat", "yhat_lower", "yhat_upper"]].copy()
+        # Ambil juga komponen trend & yearly seasonality -> untuk XAI (jelaskan KENAPA forecast naik/turun)
+        component_cols = ["ds", "yhat", "yhat_lower", "yhat_upper", "trend"]
+        if "yearly" in forecast.columns:
+            component_cols.append("yearly")
+        forecast_out = forecast[component_cols].copy()
+        if "yearly" not in forecast_out.columns:
+            forecast_out["yearly"] = 0.0
         forecast_out["genre"] = genre
         forecast_out["is_forecast"] = forecast_out["ds"] > df_genre["ds"].max()
         all_forecasts.append(forecast_out)
