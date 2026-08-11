@@ -68,13 +68,13 @@ if mode == "🏠 Beranda (Trending)":
     if selected_genre:
         forecast_df = get_genre_forecast(selected_genre)
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=forecast_df["ds"], y=forecast_df["yhat"], name="Forecast", line=dict(color="royalblue")))
-        fig.add_trace(go.Scatter(x=forecast_df["ds"], y=forecast_df["yhat_upper"], name="Upper", line=dict(width=0), showlegend=False))
+        fig.add_trace(go.Scatter(x=forecast_df["ds"], y=forecast_df["yhat"].round(0), name="Forecast", line=dict(color="royalblue")))
+        fig.add_trace(go.Scatter(x=forecast_df["ds"], y=forecast_df["yhat_upper"].round(0), name="Upper", line=dict(width=0), showlegend=False))
         fig.add_trace(go.Scatter(
-            x=forecast_df["ds"], y=forecast_df["yhat_lower"], name="Confidence Interval",
+            x=forecast_df["ds"], y=forecast_df["yhat_lower"].round(0), name="Confidence Interval",
             fill="tonexty", line=dict(width=0), fillcolor="rgba(65,105,225,0.15)",
         ))
-        fig.update_layout(title=f"Demand Forecast: {selected_genre}", xaxis_title="Bulan", yaxis_title="Jumlah Transaksi")
+        fig.update_layout(title=f"Demand Forecast: {selected_genre}", xaxis_title="Bulan", yaxis_title="Jumlah Transaksi", yaxis=dict(tickformat=",d"))
         st.plotly_chart(fig, use_container_width=True)
 
         # XAI: jelaskan APA yang mendorong forecast ini (trend vs musiman)
