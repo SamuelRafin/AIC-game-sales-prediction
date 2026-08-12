@@ -27,7 +27,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ALS_MODEL_PATH = os.path.join(BASE_DIR, "..", "Model", "ALS", "als_model.pkl")
 BUNDLING_PATH = os.path.join(BASE_DIR, "..", "artifacts", "association_table.pkl")
 FORECAST_PATH = os.path.join(BASE_DIR, "..", "artifacts", "demand_forecast.pkl")
-DIM_GAME_PATH = os.path.join(BASE_DIR, "..", "Forecast", "game.csv") 
+DIM_GAME_PATH = os.path.join(BASE_DIR, "..", "Forecast", r"C:\Users\User\Downloads\Compfest\Model\game.csv") 
 
 GENRE_COLS = [
     "Action", "Adult", "Adventure", "Arcade", "Beat 'Em Up", "Brain Training",

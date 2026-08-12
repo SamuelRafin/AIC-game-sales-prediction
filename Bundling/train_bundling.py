@@ -39,8 +39,8 @@ DATA_DIR = os.path.join(SCRIPT_DIR, "..")  # naik 1 folder dari ALS/ ke Model/, 
 ARTIFACT_DIR = os.path.join(SCRIPT_DIR, "..", "artifacts")
 os.makedirs(ARTIFACT_DIR, exist_ok=True)
 
-TRANSAKSI_PATH = os.path.join(DATA_DIR, r"C:\Users\User\Downloads\Compfest\Model\Dataset_TerminalGame_Mentah - transaksi.csv")
-DIM_GAME_PATH = os.path.join(DATA_DIR, r"C:\Users\User\Downloads\Compfest\Model\Dataset_TerminalGame_Mentah - dim_game.csv")
+TRANSAKSI_PATH = os.path.join(DATA_DIR, r"C:\Users\User\Downloads\Compfest\Model\transaction.csv")
+DIM_GAME_PATH = os.path.join(DATA_DIR, r"C:\Users\User\Downloads\Compfest\Model\game.csv")
 
 GENRE_COLS = [
     "Action", "Adult", "Adventure", "Arcade", "Beat 'Em Up", "Brain Training",

@@ -24,8 +24,8 @@ np.random.seed(42)
 # 1. LOAD DATA
 # ------------------------------------------------------------------
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-TRANSAKSI_PATH = os.path.join(SCRIPT_DIR, r"C:\Users\User\Downloads\Compfest\Model\Dataset_TerminalGame_Mentah - transaksi.csv")
-DIM_GAME_PATH = os.path.join(SCRIPT_DIR, r"C:\Users\User\Downloads\Compfest\Model\Dataset_TerminalGame_Mentah - dim_game.csv")
+TRANSAKSI_PATH = os.path.join(SCRIPT_DIR, r"C:\Users\User\Downloads\Compfest\Model\transaction.csv")
+DIM_GAME_PATH = os.path.join(SCRIPT_DIR, r"C:\Users\User\Downloads\Compfest\Model\game.csv")
 
 trans = pd.read_csv(TRANSAKSI_PATH)
 dim_game = pd.read_csv(DIM_GAME_PATH)

@@ -17,8 +17,8 @@ pd.set_option("display.width", 120)
 # ------------------------------------------------------------------
 # 1. LOAD DATA
 # ------------------------------------------------------------------
-TRANSAKSI_PATH = r"C:\Users\User\Downloads\Compfest\Model\Dataset_TerminalGame_Mentah - transaksi.csv"
-DIM_GAME_PATH = r"C:\Users\User\Downloads\Compfest\Model\Dataset_TerminalGame_Mentah - dim_game.csv"
+TRANSAKSI_PATH = r"C:\Users\User\Downloads\Compfest\Model\transaction.csv"
+DIM_GAME_PATH = r"C:\Users\User\Downloads\Compfest\Model\game.csv"
 
 trans = pd.read_csv(TRANSAKSI_PATH)
 dim_game = pd.read_csv(DIM_GAME_PATH)
@@ -80,15 +80,21 @@ print(popularity[["game_name", "jumlah_pembelian", "rata_rating", "skor_populer"
 # Manfaatkan user_profile_genres di data transaksi supaya rekomendasi
 # sedikit lebih relevan: ranking populer HANYA di antara game yang
 # genre-nya overlap dengan genre favorit user.
-game_genre_lookup = dim_game.set_index("game_name")["genre"].to_dict()
+GENRE_COLS = ["Action", "Adult", "Adventure", "Arcade", "Beat 'Em Up", "Brain Training",
+    "Card & Board Game", "Casual", "Educational", "Family", "Fighting", "Fitness",
+    "Hack And Slash", "Horror", "Indie", "Moba", "Music", "Party", "Pinball",
+    "Platform", "Point-And-Click", "Puzzle", "Quiz", "Racing",
+    "Real Time Strategy (Rts)", "Rhythm", "Shooter", "Simulation", "Simulator",
+    "Sport", "Sports", "Strategy", "Tactical", "Trivia",
+    "Turn-Based Strategy (Tbs)", "Unique", "Unknown", "Visual Novel", "RPG"]  # daftar kolom one-hot yang beneran ada di dim_game
 
-def genre_set(genre_str: str) -> set:
-    if pd.isna(genre_str):
-        return set()
-    return set(g.strip().lower() for g in str(genre_str).replace("|", "/").split("/"))
+dim_game_indexed = dim_game.drop_duplicates(subset="game_name").set_index("game_name")
+game_genre_lookup = dim_game_indexed[GENRE_COLS].apply(
+    lambda row: set(g for g in GENRE_COLS if row[g] == 1), axis=1
+).to_dict()
 
-popularity["genre_set"] = popularity["game_name"].map(game_genre_lookup).apply(genre_set)
-
+popularity["genre_set"] = popularity["game_name"].map(game_genre_lookup)
+popularity["genre_set"] = popularity["genre_set"].apply(lambda x: x if isinstance(x, set) else set())
 
 def recommend_for_user(user_id: int, k: int = 10, use_genre_filter: bool = True) -> list:
     """Rekomendasikan top-k game untuk user_id, exclude game yang sudah pernah dibeli di TRAIN."""
@@ -96,16 +102,22 @@ def recommend_for_user(user_id: int, k: int = 10, use_genre_filter: bool = True)
 
     candidates = popularity[~popularity["game_name"].isin(already_owned)].copy()
 
+    def get_user_favorite_genres(user_id: int) -> set:
+        """Genre favorit user = gabungan genre dari semua game yang pernah dia beli (di TRAIN)."""
+        user_games = train.loc[train["user_id"] == user_id, "game_name"]
+        favorite_genres = set()
+        for g in user_games:
+            favorite_genres |= game_genre_lookup.get(g, set())
+        return favorite_genres
+
     if use_genre_filter:
-        user_row = train.loc[train["user_id"] == user_id, "user_profile_genres"]
-        if len(user_row) > 0:
-            user_genres = genre_set(user_row.iloc[0])
-            if user_genres:
-                mask = candidates["genre_set"].apply(lambda gs: len(gs & user_genres) > 0)
-                filtered = candidates[mask]
-                # kalau hasil filter genre terlalu sedikit, fallback ke popularity global
-                if len(filtered) >= k:
-                    candidates = filtered
+        user_genres = get_user_favorite_genres(user_id)
+        if user_genres:
+            mask = candidates["genre_set"].apply(lambda gs: len(gs & user_genres) > 0)
+            filtered = candidates[mask]
+            # kalau hasil filter genre terlalu sedikit, fallback ke popularity global
+            if len(filtered) >= k:
+                candidates = filtered
 
     return candidates["game_name"].head(k).tolist()
 

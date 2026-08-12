@@ -27,7 +27,7 @@ pd.set_option("display.width", 120)
 np.random.seed(42)
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-TRANSAKSI_PATH = os.path.join(SCRIPT_DIR, r"C:\Users\User\Downloads\Compfest\Model\Dataset_TerminalGame_Mentah - transaksi.csv")
+TRANSAKSI_PATH = os.path.join(SCRIPT_DIR, r"C:\Users\User\Downloads\Compfest\Model\transaction.csv")
 
 trans = pd.read_csv(TRANSAKSI_PATH)
 trans["date_time"] = pd.to_datetime(trans["date_time"])

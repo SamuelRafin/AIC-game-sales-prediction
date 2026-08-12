@@ -46,8 +46,8 @@ DATA_DIR = SCRIPT_DIR  # sesuaikan kalau struktur folder kamu beda
 ARTIFACT_DIR = os.path.join(SCRIPT_DIR, "..", "artifacts")
 os.makedirs(ARTIFACT_DIR, exist_ok=True)
 
-TRANSAKSI_PATH = os.path.join(DATA_DIR, r"transaction.csv")
-DIM_GAME_PATH = os.path.join(DATA_DIR, r"game.csv")
+TRANSAKSI_PATH = os.path.join(DATA_DIR, r"C:\Users\User\Downloads\Compfest\Model\transaction.csv")
+DIM_GAME_PATH = os.path.join(DATA_DIR, r"C:\Users\User\Downloads\Compfest\Model\game.csv")
 
 GENRE_COLS = [
     "Action", "Adult", "Adventure", "Arcade", "Beat 'Em Up", "Brain Training",
