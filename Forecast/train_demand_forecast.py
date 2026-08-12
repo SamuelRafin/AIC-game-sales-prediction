@@ -46,8 +46,8 @@ DATA_DIR = SCRIPT_DIR  # sesuaikan kalau struktur folder kamu beda
 ARTIFACT_DIR = os.path.join(SCRIPT_DIR, "..", "artifacts")
 os.makedirs(ARTIFACT_DIR, exist_ok=True)
 
-TRANSAKSI_PATH = os.path.join(DATA_DIR, r"C:\Users\User\Downloads\Compfest\Model\Dataset_TerminalGame_Mentah - transaksi.csv")
-DIM_GAME_PATH = os.path.join(DATA_DIR, r"C:\Users\User\Downloads\Compfest\Model\Dataset_TerminalGame_Mentah - dim_game.csv")
+TRANSAKSI_PATH = os.path.join(DATA_DIR, r"transaction.csv")
+DIM_GAME_PATH = os.path.join(DATA_DIR, r"game.csv")
 
 GENRE_COLS = [
     "Action", "Adult", "Adventure", "Arcade", "Beat 'Em Up", "Brain Training",
@@ -131,6 +131,7 @@ def main():
             forecast_out["yearly"] = 0.0
         forecast_out["genre"] = genre
         forecast_out["is_forecast"] = forecast_out["ds"] > df_genre["ds"].max()
+        forecast_out = forecast_out.merge(df_genre[["ds", "y"]], on="ds", how="left")
         all_forecasts.append(forecast_out)
 
         # Ringkasan trending: bandingkan rata-rata forecast vs rata-rata actual 3 bulan terakhir

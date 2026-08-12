@@ -67,14 +67,54 @@ if mode == "🏠 Beranda (Trending)":
 
     if selected_genre:
         forecast_df = get_genre_forecast(selected_genre)
+        if forecast_df is None:
+            st.warning(f"genre '{selected_genre}' tidak tersedia.")
+
+        historis = forecast_df[~forecast_df["is_forecast"]]
+        forecast = forecast_df[forecast_df["is_forecast"]]
         fig = go.Figure()
-        fig.add_trace(go.Scatter(x=forecast_df["ds"], y=forecast_df["yhat"].round(0), name="Forecast", line=dict(color="royalblue")))
-        fig.add_trace(go.Scatter(x=forecast_df["ds"], y=forecast_df["yhat_upper"].round(0), name="Upper", line=dict(width=0), showlegend=False))
+        # Garis historis
         fig.add_trace(go.Scatter(
-            x=forecast_df["ds"], y=forecast_df["yhat_lower"].round(0), name="Confidence Interval",
-            fill="tonexty", line=dict(width=0), fillcolor="rgba(65,105,225,0.15)",
+            x=historis["ds"],
+            y=historis["yhat"],
+            name="Historis",
+            line=dict(color="royalblue"),
+            hovertemplate="<b>Historis</b><br>%{x|%d %b %Y}<br>%{y:.0f} transaksi<extra></extra>"
         ))
-        fig.update_layout(title=f"Demand Forecast: {selected_genre}", xaxis_title="Bulan", yaxis_title="Jumlah Transaksi", yaxis=dict(tickformat=",d"))
+        # Garis forecast - dashed, warna beda
+        fig.add_trace(go.Scatter(
+            x=forecast["ds"],
+            y=forecast["yhat"],
+            name="Forecast",
+            line=dict(color="orange",dash="dash"),
+            hovertemplate="<b>Forecast</b><br>%{x|%d %b %Y}<br>%{y:.0f} transaksi<extra></extra>"
+        ))
+        # Confidence interval 
+        fig.add_trace(go.Scatter(
+            x=forecast["ds"],
+            y=forecast["yhat_upper"],
+            name="Upper",
+            line=dict(width=0),
+            showlegend=False,
+            hoverinfo="skip"
+        ))
+        fig.add_trace(go.Scatter(
+            x=forecast["ds"],
+            y=forecast["yhat_lower"],
+            name="Confidence Interval",
+            fill="tonexty",
+            line=dict(width=0),
+            fillcolor="rgba(255,165,0,0.15)",
+            hovertemplate="<b>Batas bawah interval</b><br>%{x|%d %b %Y}<br>%{y:.0f} transaksi<extra></extra>"
+        ))
+        fig.add_vline(x=historis["ds"].max(), line_dash="dot", line_color="gray", annotation_text="Sekarang")
+
+        fig.update_layout(
+            title=f"Demand Forecast: {selected_genre}",
+            xaxis_title="Bulan",
+            yaxis_title="Jumlah Transaksi",
+            hovermode="x unified"
+        )
         st.plotly_chart(fig, use_container_width=True)
 
         # XAI: jelaskan APA yang mendorong forecast ini (trend vs musiman)
@@ -148,10 +188,12 @@ elif mode == "👤 Cari berdasarkan User ID (Rekomendasi)":
             with col2:
                 st.markdown("**Rekomendasi Game Berikutnya**")
                 for item in hasil["rekomendasi"]:
+                    if item["skor_kemiripan"] <= 0:
+                        continue
                     st.progress(
                         min(item["skor_kemiripan"] / 100, 1.0),
                         text=f"{item['game']} — skor kecocokan {item['skor_kemiripan']}%",
                     )
                     # XAI: jelaskan kenapa game ini direkomendasikan
                     if "xai" in item:
-                        st.caption(f"   💡 {item['xai']['alasan']} (kemiripan {item['xai']['tingkat_kemiripan']}%)")
+                        st.caption(f"   💡 {item['xai']['alasan']}")

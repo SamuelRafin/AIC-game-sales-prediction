@@ -27,6 +27,17 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 ALS_MODEL_PATH = os.path.join(BASE_DIR, "..", "Model", "ALS", "als_model.pkl")
 BUNDLING_PATH = os.path.join(BASE_DIR, "..", "artifacts", "association_table.pkl")
 FORECAST_PATH = os.path.join(BASE_DIR, "..", "artifacts", "demand_forecast.pkl")
+DIM_GAME_PATH = os.path.join(BASE_DIR, "..", "Forecast", "game.csv") 
+
+GENRE_COLS = [
+    "Action", "Adult", "Adventure", "Arcade", "Beat 'Em Up", "Brain Training",
+    "Card & Board Game", "Casual", "Educational", "Family", "Fighting", "Fitness",
+    "Hack And Slash", "Horror", "Indie", "Moba", "Music", "Party", "Pinball",
+    "Platform", "Point-And-Click", "Puzzle", "Quiz", "Racing",
+    "Real Time Strategy (Rts)", "Rhythm", "Shooter", "Simulation", "Simulator",
+    "Sport", "Sports", "Strategy", "Tactical", "Trivia",
+    "Turn-Based Strategy (Tbs)", "Unique", "Unknown", "Visual Novel", "RPG",
+]
 
 
 # ============================================================================
@@ -36,7 +47,6 @@ FORECAST_PATH = os.path.join(BASE_DIR, "..", "artifacts", "demand_forecast.pkl")
 def load_bundling_artifacts():
     with open(BUNDLING_PATH, "rb") as f:
         return pickle.load(f)
-
 
 def get_bundling_suggestions(game_name: str, top_n: int = 5) -> dict:
     """Input: nama game (harus persis/exact match dari dataset).
@@ -60,7 +70,6 @@ def get_bundling_suggestions(game_name: str, top_n: int = 5) -> dict:
         "rekomendasi_bundling": rekomendasi,
     }
 
-
 def search_game_names(query: str, limit: int = 10) -> list:
     """Cari nama game yang mengandung 'query' (untuk autocomplete/dropdown di UI)."""
     data = load_bundling_artifacts()
@@ -77,14 +86,57 @@ def search_game_names(query: str, limit: int = 10) -> list:
 def load_als_artifacts():
     with open(ALS_MODEL_PATH, "rb") as f:
         return pickle.load(f)
-
-
+    
 def _cosine_sim(vec_a, vec_b_matrix):
     """Cosine similarity antara 1 vektor vs banyak vektor sekaligus (untuk cari item paling mirip)."""
     norm_a = vec_a / (np.linalg.norm(vec_a) + 1e-9)
     norm_b = vec_b_matrix / (np.linalg.norm(vec_b_matrix, axis=1, keepdims=True) + 1e-9)
     return norm_b @ norm_a
 
+@st.cache_resource
+def load_genre_lookup():
+    """Load tabel genre per game (dari dim_game) -> dipakai untuk cek genre overlap di XAI."""
+    dim_game = pd.read_csv(DIM_GAME_PATH)
+    dim_game = dim_game.drop_duplicates(subset="game_name").set_index("game_name")
+    return dim_game[GENRE_COLS]
+ 
+def _get_genres(game_name: str) -> set:
+    """Ambil daftar genre (nama kolom yang bernilai 1) untuk 1 game."""
+    genre_table = load_genre_lookup()
+    if game_name not in genre_table.index:
+        return set()
+    row = genre_table.loc[game_name]
+    return set(row[row == 1].index)
+ 
+def _genre_overlap(game_a: str, game_b: str) -> dict:
+    """Cek genre yang sama persis antara 2 game -> bukti pendukung independen dari skor ALS."""
+    genres_a = _get_genres(game_a)
+    genres_b = _get_genres(game_b)
+    common = genres_a & genres_b
+    return {
+        "genre_sama": sorted(common),
+        "ada_genre_sama": len(common) > 0,
+    }
+
+def _co_purchase_rate(reference_idx: int, recommended_idx: int, user_item_matrix) -> dict:
+    """
+    Hitung: dari semua user yang punya game REFERENSI, berapa persen yang JUGA
+    punya game yang direkomendasikan. Ini murni statistik dari data user lain,
+    independen dari perhitungan similarity ALS -> bukti pendukung kedua.
+    """
+    owners_reference = set(user_item_matrix[:, reference_idx].nonzero()[0])
+    owners_recommended = set(user_item_matrix[:, recommended_idx].nonzero()[0])
+ 
+    if len(owners_reference) == 0:
+        return {"co_purchase_pct": 0.0, "jumlah_owner_referensi": 0}
+ 
+    overlap = owners_reference & owners_recommended
+    pct = (len(overlap) / len(owners_reference)) * 100
+    return {
+        "co_purchase_pct": round(pct, 1),
+        "jumlah_owner_referensi": len(owners_reference),
+        "jumlah_beli_keduanya": len(overlap),
+    }
 
 def explain_recommendation(user_id: int, recommended_game_idx: int) -> dict:
     """
@@ -92,6 +144,16 @@ def explain_recommendation(user_id: int, recommended_game_idx: int) -> dict:
     vektor laten, tidak ada alasan yang manusiawi secara default).
     Solusi: cari game DI HISTORI USER yang vektornya paling mirip (cosine similarity)
     dengan game yang direkomendasikan -> itu jadi "alasan" rekomendasinya.
+
+    Solusi 3 lapis:
+      1. Cari game DI HISTORI USER yang vektornya paling mirip (cosine similarity)
+        dengan game yang direkomendasikan -> itu jadi "game referensi".
+      2. Cek APAKAH kemiripan itu didukung oleh genre yang sama (genre overlap)
+      3. Cek APAKAH kemiripan itu didukung oleh pola pembelian user lain (co-purchase
+        rate)
+
+    CATATAN PENTING: genre overlap & co-purchase sebagai BUKTI PENDUKUNG
+    yang berkorelasi dengan skor similarity, bukan penyebab langsung skor itu
     """
     artifacts = load_als_artifacts()
     model = artifacts["model"]
@@ -110,15 +172,39 @@ def explain_recommendation(user_id: int, recommended_game_idx: int) -> dict:
 
     sims = _cosine_sim(rec_vector, owned_vectors)
     best_idx_in_owned = np.argmax(sims)
+    reference_idx = owned_indices[best_idx_in_owned]
     most_similar_game = idx_to_game[owned_indices[best_idx_in_owned]]
+    recommended_game = idx_to_game[recommended_game_idx]
     similarity_pct = round(float(sims[best_idx_in_owned]) * 100, 1)
 
+    # 1: genre overlap
+    genre_info = _genre_overlap(most_similar_game, recommended_game)
+    # 2: co-purchase rate 
+    co_purchase_info = _co_purchase_rate(reference_idx, recommended_game_idx, user_item_matrix)
+    faktor_pendukung = []
+    if genre_info["ada_genre_sama"]:
+        genre_str = ", ".join(genre_info["genre_sama"])
+        faktor_pendukung.append(f"sama-sama genre {genre_str}")
+    if co_purchase_info["co_purchase_pct"] > 0:
+        faktor_pendukung.append(
+            f"{co_purchase_info['co_purchase_pct']}% dari user lain yang main "
+            f"'{most_similar_game}' juga main game ini"
+        )
+    if faktor_pendukung:
+        penjelasan_tambahan = " Didukung oleh: " + "; ".join(faktor_pendukung) + "."
+    else:
+        penjelasan_tambahan = (
+            " Tidak ada kesamaan genre/pola pembelian bersama yang jelas -- "
+            "kemiripan ini murni dari pola preferensi tersembunyi yang dipelajari model."
+        )
+
     return {
-        "alasan": f"Mirip dengan '{most_similar_game}' yang pernah kamu mainkan",
+        "alasan": f"Mirip dengan '{most_similar_game}' yang pernah kamu mainkan (kemiripan preferensi {similarity_pct}%).{penjelasan_tambahan}",
         "game_referensi": most_similar_game,
         "tingkat_kemiripan": similarity_pct,
+        "genre_sama": genre_info["genre_sama"],
+        "co_purchase_pct": co_purchase_info["co_purchase_pct"],
     }
-
 
 def get_next_item_recommendations(user_id: int, k: int = 10, with_explanation: bool = True) -> dict:
     """Input: user_id.
@@ -172,7 +258,6 @@ def load_forecast_artifacts():
     with open(FORECAST_PATH, "rb") as f:
         return pickle.load(f)
 
-
 def get_trending_genres(top_n: int = 5) -> dict:
     """Output: ranking genre paling trending naik & turun (untuk homepage)."""
     data = load_forecast_artifacts()
@@ -182,7 +267,6 @@ def get_trending_genres(top_n: int = 5) -> dict:
         "trending_turun": trending.tail(top_n).to_dict("records"),
     }
 
-
 def get_genre_forecast(genre: str) -> pd.DataFrame:
     """Output: dataframe historis + forecast untuk 1 genre (untuk bikin grafik)."""
     data = load_forecast_artifacts()
@@ -191,11 +275,9 @@ def get_genre_forecast(genre: str) -> pd.DataFrame:
         return None
     return forecast_by_genre[genre]
 
-
 def get_all_genres() -> list:
     data = load_forecast_artifacts()
     return sorted(data["forecast_by_genre"].keys())
-
 
 def explain_forecast(genre: str) -> dict:
     """
