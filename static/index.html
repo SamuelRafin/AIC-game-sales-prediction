@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seller copilot — Insight AI Toko Game</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-container">
+    
+    <!-- Top Header -->
+    <header class="header">
+      <div class="header-left">
+        <h1 class="app-title">Seller copilot</h1>
+        <p class="app-subtitle">Insight AI untuk penjual di marketplace game</p>
+      </div>
+      <div class="header-right">
+        <span class="badge-model">Model</span>
+      </div>
+    </header>
+
+    <!-- Search Section -->
+    <section class="search-section">
+      <!-- Mode Toggle Pills -->
+      <div class="mode-toggle">
+        <button id="btn-mode-game" class="btn-pill active" onclick="switchMode('game')">Cari game</button>
+        <button id="btn-mode-user" class="btn-pill" onclick="switchMode('user')">Cari pembeli</button>
+      </div>
+
+      <!-- Search Bar -->
+      <div class="search-box-wrapper">
+        <div class="search-input-group">
+          <input 
+            type="text" 
+            id="search-input" 
+            class="search-input" 
+            placeholder="Ketik nama game, mis. Valorant" 
+            autocomplete="off"
+            onkeydown="handleKeyDown(event)"
+            oninput="handleInput()"
+          >
+          <button class="btn-search" onclick="executeSearch()">Cari</button>
+        </div>
+        <!-- Autocomplete Dropdown -->
+        <div id="autocomplete-dropdown" class="autocomplete-dropdown hidden"></div>
+      </div>
+    </section>
+
+    <!-- Stat Metrics Row -->
+    <section class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-label" id="label-metric-1">Skor kelakuan</span>
+        <span class="metric-value" id="val-skor-kelakuan">42%</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label">Forecast 4 minggu</span>
+        <span class="metric-value metric-green" id="val-forecast-4-minggu">↑ 18%</span>
+      </div>
+      <div class="metric-card">
+        <span class="metric-label" id="label-metric-rank">Rank di genre FPS</span>
+        <span class="metric-value" id="val-rank-genre">#3</span>
+      </div>
+    </section>
+
+    <!-- Results Container Card -->
+    <section class="results-card">
+      <h2 class="card-title" id="results-card-title">Saran bundling</h2>
+      <div id="recommendations-list" class="recommendations-list">
+        <!-- Dynamic Recommendation Items -->
+        <div class="recommendation-item">
+          <div class="item-header">
+            <span class="item-name">CS2</span>
+            <span class="item-percentage">38%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" style="width: 38%;"></div>
+          </div>
+        </div>
+
+        <div class="recommendation-item">
+          <div class="item-header">
+            <span class="item-name">Apex Legends</span>
+            <span class="item-percentage">29%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" style="width: 29%;"></div>
+          </div>
+        </div>
+
+        <div class="recommendation-item">
+          <div class="item-header">
+            <span class="item-name">Overwatch 2</span>
+            <span class="item-percentage">24%</span>
+          </div>
+          <div class="progress-bar-bg">
+            <div class="progress-bar-fill" style="width: 24%;"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

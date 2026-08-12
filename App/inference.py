@@ -169,8 +169,27 @@ def get_next_item_recommendations(user_id: int, k: int = 10, with_explanation: b
 # ============================================================================
 @st.cache_resource
 def load_forecast_artifacts():
-    with open(FORECAST_PATH, "rb") as f:
-        return pickle.load(f)
+    try:
+        with open(FORECAST_PATH, "rb") as f:
+            return pickle.load(f)
+    except Exception:
+        # Fallback to reading CSV artifacts if pickle has pandas version incompatibility
+        artifacts_dir = os.path.dirname(FORECAST_PATH)
+        sum_csv = os.path.join(artifacts_dir, "demand_trending_summary.csv")
+        fc_csv = os.path.join(artifacts_dir, "demand_forecast.csv")
+        
+        trending_summary = pd.read_csv(sum_csv) if os.path.exists(sum_csv) else pd.DataFrame()
+        forecast_df = pd.read_csv(fc_csv) if os.path.exists(fc_csv) else pd.DataFrame()
+        
+        forecast_by_genre = {}
+        if not forecast_df.empty and "genre" in forecast_df.columns:
+            for g, group in forecast_df.groupby("genre"):
+                forecast_by_genre[g] = group.reset_index(drop=True)
+                
+        return {
+            "trending_summary": trending_summary,
+            "forecast_by_genre": forecast_by_genre
+        }
 
 
 def get_trending_genres(top_n: int = 5) -> dict:
