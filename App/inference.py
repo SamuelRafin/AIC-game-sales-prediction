@@ -20,14 +20,14 @@ import numpy as np
 import streamlit as st
 
 # ------------------------------------------------------------------
-# PATH ARTIFACT — SESUAIKAN DENGAN STRUKTUR FOLDER KAMU
+# PATH ARTIFACT
 # ------------------------------------------------------------------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 ALS_MODEL_PATH = os.path.join(BASE_DIR, "..", "Model", "ALS", "als_model.pkl")
 BUNDLING_PATH = os.path.join(BASE_DIR, "..", "artifacts", "association_table.pkl")
 FORECAST_PATH = os.path.join(BASE_DIR, "..", "artifacts", "demand_forecast.pkl")
-DIM_GAME_PATH = os.path.join(BASE_DIR, "..", "Forecast", "game.csv") 
+DIM_GAME_PATH = os.path.join(BASE_DIR, "..", "Forecast", "game_example.csv")
 
 GENRE_COLS = [
     "Action", "Adult", "Adventure", "Arcade", "Beat 'Em Up", "Brain Training",
@@ -70,12 +70,22 @@ def get_bundling_suggestions(game_name: str, top_n: int = 5) -> dict:
         "rekomendasi_bundling": rekomendasi,
     }
 
-def search_game_names(query: str, limit: int = 10) -> list:
-    """Cari nama game yang mengandung 'query' (untuk autocomplete/dropdown di UI)."""
+def get_all_game_names() -> list:
+    """Mengambil semua daftar nama game yang diurutkan untuk auto-suggest di UI."""
     data = load_bundling_artifacts()
-    all_games = list(data["game_popularity"].keys())
-    query_lower = query.lower()
+    return sorted(list(data["game_popularity"].keys()))
+
+def search_game_names(query: str, limit: int = 15) -> list:
+    """Cari nama game yang mengandung 'query' dengan sorting relevansi & popularitas."""
+    data = load_bundling_artifacts()
+    popularity = data["game_popularity"]
+    all_games = list(popularity.keys())
+    query_lower = query.strip().lower()
+    if not query_lower:
+        return []
     matches = [g for g in all_games if query_lower in g.lower()]
+    # Prioritaskan prefix match (berawalan kata kunci), lalu jumlah pembeli terbanyak
+    matches.sort(key=lambda g: (not g.lower().startswith(query_lower), -popularity.get(g, 0), len(g)))
     return matches[:limit]
 
 
@@ -86,6 +96,24 @@ def search_game_names(query: str, limit: int = 10) -> list:
 def load_als_artifacts():
     with open(ALS_MODEL_PATH, "rb") as f:
         return pickle.load(f)
+
+def get_all_user_ids() -> list:
+    """Mengambil semua daftar User ID yang valid dan terurut untuk auto-suggest di UI."""
+    artifacts = load_als_artifacts()
+    user_to_idx = artifacts.get("user_to_idx", {})
+    return [int(u) for u in sorted(user_to_idx.keys())]
+
+def search_user_ids(query, limit: int = 15) -> list:
+    """Cari User ID yang berawalan atau mengandung query angka."""
+    all_users = get_all_user_ids()
+    query_str = str(query).strip()
+    if not query_str:
+        return all_users[:limit]
+    matches = [u for u in all_users if str(u).startswith(query_str)]
+    if len(matches) < limit:
+        additional = [u for u in all_users if query_str in str(u) and u not in matches]
+        matches.extend(additional)
+    return matches[:limit]
     
 def _cosine_sim(vec_a, vec_b_matrix):
     """Cosine similarity antara 1 vektor vs banyak vektor sekaligus (untuk cari item paling mirip)."""

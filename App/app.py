@@ -20,8 +20,8 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from inference import (
-    get_bundling_suggestions, search_game_names,
-    get_next_item_recommendations,
+    get_bundling_suggestions, search_game_names, get_all_game_names,
+    get_next_item_recommendations, get_all_user_ids,
     get_trending_genres, get_genre_forecast, get_all_genres, explain_forecast,
 )
 
@@ -182,15 +182,14 @@ elif mode == "🔍 Cari berdasarkan Game (Bundling)":
     
     col_input, col_info = st.columns([2, 1])
     with col_input:
-        query = st.text_input("Search Game Name:", placeholder="e.g. Gran Theft Auto")
-    
-    selected_game = None
-    if query:
-        matches = search_game_names(query, limit=10)
-        if matches:
-            selected_game = st.selectbox("Select precise match:", matches)
-        else:
-            st.warning("Game not found.")
+        all_games = get_all_game_names()
+        selected_game = st.selectbox(
+            "Search Game Name (Auto-Suggest):",
+            options=all_games,
+            index=None,
+            placeholder="e.g. Grand Theft Auto",
+            help="Type keyword to see instant auto-suggestions from 10,000+ games."
+        )
 
     if selected_game:
         hasil = get_bundling_suggestions(selected_game, top_n=5)
@@ -226,7 +225,16 @@ elif mode == "🔍 Cari berdasarkan Game (Bundling)":
 elif mode == "👤 Cari berdasarkan User ID (Rekomendasi)":
     st.markdown("##### EMPLOYEE SALES (USER RECOMMENDATIONS)")
 
-    user_id_input = st.number_input("Enter User ID:", min_value=1, step=1, value=None, placeholder="e.g. 123")
+    col_input, _ = st.columns([2, 1])
+    with col_input:
+        all_users = get_all_user_ids()
+        user_id_input = st.selectbox(
+            "Search User ID (Auto-Suggest):",
+            options=all_users,
+            index=None,
+            placeholder="Type or select User ID, e.g. 1001, 2045...",
+            help="Type digits to auto-suggest from 5,000+ registered User IDs."
+        )
 
     if user_id_input:
         hasil = get_next_item_recommendations(int(user_id_input), k=10)
