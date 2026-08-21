@@ -219,3 +219,7 @@ __marimo__/
 Model/Popularity/popularity_ranking.csv 
 popularity_ranking.csv
 Dataset_TerminalGame_Mentah*.csv
+
+# CSV
+Forecast/game.csv
+Forecast/transaction.csv
